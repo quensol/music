@@ -34,9 +34,11 @@ export default function TabLayout() {
             // 使用透明背景在iOS上显示模糊效果
             position: 'absolute',
             backgroundColor: spotifyColors.background,
+            zIndex: 10, // 确保在播放器上方
           },
           default: {
             backgroundColor: spotifyColors.background,
+            zIndex: 10, // 确保在播放器上方
           },
         }),
       }}>

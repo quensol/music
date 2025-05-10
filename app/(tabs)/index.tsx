@@ -9,22 +9,22 @@ const recentlyPlayed = [
   { 
     id: 1, 
     title: '每日推荐', 
-    image: 'https://dailymix-images.scdn.co/v2/img/ab6761610000e5ebcdce7620dc940db079bf4952/1/zh/default'
+    image: 'https://picsum.photos/id/1025/300'
   },
   { 
     id: 2, 
     title: '流行热歌', 
-    image: 'https://i.scdn.co/image/ab67706f0000000278b4745cb9ce8ffe32d778b8'
+    image: 'https://via.placeholder.com/200x200/FF5733/FFFFFF?text=流行热歌'
   },
   { 
     id: 3, 
     title: '放松音乐', 
-    image: 'https://i.scdn.co/image/ab67706f000000025551996f500ba876bda73fa5'
+    image: 'https://via.placeholder.com/200x200/33A8FF/FFFFFF?text=放松音乐'
   },
   { 
     id: 4, 
     title: '工作专注', 
-    image: 'https://i.scdn.co/image/ab67706f00000002724554ed6bed6f051d9b0bfc'
+    image: 'https://via.placeholder.com/200x200/8033FF/FFFFFF?text=工作专注'
   },
 ];
 
@@ -34,37 +34,65 @@ const forYou = [
     id: 1, 
     title: '周杰伦', 
     subtitle: '艺人',
-    image: 'https://i.scdn.co/image/ab6761610000e5eba8683239a58d4a9adf3713f4'
+    image: 'https://i.pravatar.cc/150?img=3'
   },
   { 
     id: 2, 
     title: '华语流行', 
     subtitle: '播放列表',
-    image: 'https://i.scdn.co/image/ab67706f000000023082add063ae6a6e7b55d409'
+    image: 'https://via.placeholder.com/300x300/1DB954/FFFFFF?text=华语流行'
   },
   { 
     id: 3, 
     title: '最新发行', 
     subtitle: '播放列表',
-    image: 'https://i.scdn.co/image/ab67706f00000002fe6d8d1019d5b302213e3730'
+    image: 'https://picsum.photos/id/1028/300'
   },
   { 
     id: 4, 
     title: '人气播客', 
     subtitle: '播客',
-    image: 'https://i.scdn.co/image/ab67656300005f1f848fa8fccad48b633ae5582c'
+    image: 'https://robohash.org/artist1?set=set2&size=150x150'
   },
   { 
     id: 5, 
     title: '环球音乐', 
     subtitle: '唱片公司',
-    image: 'https://i.scdn.co/image/ab67706c0000da84fcb8b92f2615d3261b8eb146'
+    image: 'https://via.placeholder.com/300x300/121212/FFFFFF?text=环球音乐'
   },
   { 
     id: 6, 
     title: '独立精选', 
     subtitle: '播放列表',
-    image: 'https://i.scdn.co/image/ab67706f000000027876fe166a29b8e6b8db14da'
+    image: 'https://picsum.photos/300'
+  },
+];
+
+// 热门播客数据
+const podcasts = [
+  {
+    id: 1,
+    title: '音乐故事',
+    duration: '35 分钟',
+    image: 'https://robohash.org/artist2?set=set2&size=180x180'
+  },
+  {
+    id: 2,
+    title: '每日话题',
+    duration: '45 分钟',
+    image: 'https://via.placeholder.com/180x180/6A0572/FFFFFF?text=每日话题'
+  },
+  {
+    id: 3,
+    title: '心理健康',
+    duration: '60 分钟',
+    image: 'https://robohash.org/artist3?set=set2&size=180x180'
+  },
+  {
+    id: 4,
+    title: '科技新闻',
+    duration: '25 分钟',
+    image: 'https://via.placeholder.com/180x180/00B4D8/FFFFFF?text=科技新闻'
   },
 ];
 
@@ -175,19 +203,19 @@ export default function HomeScreen() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.podcastsContainer}
           >
-            {[1, 2, 3, 4].map((item, index) => (
+            {podcasts.map((podcast, index) => (
               <MotiView
-                key={item}
+                key={podcast.id}
                 from={{ opacity: 0, translateX: 20 }}
                 animate={{ opacity: 1, translateX: 0 }}
                 transition={{ type: 'timing', duration: 600, delay: 600 + index * 100 }}
                 style={styles.podcastCard}
               >
                 <Card style={{ backgroundColor: spotifyColors.card }}>
-                  <Card.Cover source={{ uri: 'https://i.scdn.co/image/ab67656300005f1fa1c3278c0856b7e207bee36c' }} />
+                  <Card.Cover source={{ uri: podcast.image }} />
                   <Card.Content style={{ paddingVertical: 8 }}>
-                    <Title style={{ color: spotifyColors.text, fontSize: 14 }}>每日话题</Title>
-                    <Paragraph style={{ color: spotifyColors.inactive, fontSize: 12 }}>时长: 45 分钟</Paragraph>
+                    <Title style={{ color: spotifyColors.text, fontSize: 14 }}>{podcast.title}</Title>
+                    <Paragraph style={{ color: spotifyColors.inactive, fontSize: 12 }}>时长: {podcast.duration}</Paragraph>
                   </Card.Content>
                 </Card>
               </MotiView>
@@ -198,40 +226,6 @@ export default function HomeScreen() {
         {/* 底部空间，为播放器留出位置 */}
         <View style={{ height: 80 }} />
       </ScrollView>
-      
-      {/* 底部播放器 - 固定位置 */}
-      <MotiView
-        from={{ translateY: 80 }}
-        animate={{ translateY: 0 }}
-        transition={{ type: 'spring', delay: 1000 }}
-        style={[styles.player, { backgroundColor: spotifyColors.card }]}
-      >
-        <View style={styles.playerContent}>
-          <Image 
-            source={{ uri: 'https://i.scdn.co/image/ab67616d00001e02ff9ca10b55ce82ae553c8228' }} 
-            style={styles.playerImage} 
-          />
-          <View style={styles.playerInfo}>
-            <Text style={{ color: spotifyColors.text, fontWeight: 'bold' }}>当前播放歌曲</Text>
-            <Text style={{ color: spotifyColors.inactive }}>歌手名称</Text>
-          </View>
-          <View style={styles.playerControls}>
-            <IconButton
-              icon="heart-outline"
-              iconColor={spotifyColors.inactive}
-              size={24}
-              onPress={() => {}}
-            />
-            <IconButton
-              icon="pause"
-              iconColor={spotifyColors.text}
-              size={24}
-              style={{ backgroundColor: spotifyColors.primary, margin: 0 }}
-              onPress={() => {}}
-            />
-          </View>
-        </View>
-      </MotiView>
     </SafeAreaView>
   );
 }
@@ -323,33 +317,5 @@ const styles = StyleSheet.create({
   podcastCard: {
     width: 180,
     marginRight: 16,
-  },
-  player: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 60,
-    borderTopWidth: 1,
-    borderTopColor: '#333',
-  },
-  playerContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    height: '100%',
-  },
-  playerImage: {
-    width: 40,
-    height: 40,
-    borderRadius: 4,
-    marginRight: 12,
-  },
-  playerInfo: {
-    flex: 1,
-  },
-  playerControls: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
+  }
 });
