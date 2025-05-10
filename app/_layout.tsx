@@ -2,8 +2,11 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { View } from 'react-native';
+import { MD3DarkTheme, MD3LightTheme, PaperProvider } from 'react-native-paper';
 import 'react-native-reanimated';
 
+import MusicPlayer from '@/components/MusicPlayer';
 import { useColorScheme } from '@/hooks/useColorScheme';
 
 export default function RootLayout() {
@@ -12,18 +15,38 @@ export default function RootLayout() {
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
 
+  // 创建自定义主题 - Spotify风格
+  const spotifyTheme = {
+    ...(colorScheme === 'dark' ? MD3DarkTheme : MD3LightTheme),
+    colors: {
+      ...(colorScheme === 'dark' ? MD3DarkTheme.colors : MD3LightTheme.colors),
+      primary: '#1DB954', // Spotify绿色
+      secondary: '#121212', // 几乎黑色的背景
+      background: '#121212', // 几乎黑色的背景
+      surface: '#181818', // 稍微亮一点的黑色
+      text: '#FFFFFF',
+      onSurface: '#FFFFFF',
+      inactive: '#b3b3b3', // 灰色，用于非活跃项
+    },
+  };
+
   if (!loaded) {
     // Async font loading only occurs in development.
     return null;
   }
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="+not-found" />
-      </Stack>
-      <StatusBar style="auto" />
-    </ThemeProvider>
+    <PaperProvider theme={spotifyTheme}>
+      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+        <View style={{ flex: 1 }}>
+          <Stack>
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="+not-found" />
+          </Stack>
+          <StatusBar style="light" />
+          <MusicPlayer />
+        </View>
+      </ThemeProvider>
+    </PaperProvider>
   );
 }
