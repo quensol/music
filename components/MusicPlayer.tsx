@@ -80,10 +80,11 @@ export const MiniPlayer = ({ onExpand, song }: { onExpand: () => void, song: Son
 // 全屏播放器
 export const FullScreenPlayer = ({ onCollapse, song }: { onCollapse: () => void, song: Song }) => {
   const [isPlaying, setIsPlaying] = useState(false);
-  const [isShuffle, setIsShuffle] = useState(false);
-  const [repeatMode, setRepeatMode] = useState(0); // 0: 不重复, 1: 重复全部, 2: 重复当前
+  const [repeatMode, setRepeatMode] = useState(0); // 0: 不重复, 1: 重复全部, 2: 重复当前, 3: 随机播放
   const [progress, setProgress] = useState(0.3); // 播放进度，0-1之间
   const [showLyrics, setShowLyrics] = useState(false); // 是否显示歌词
+  const [isDownloaded, setIsDownloaded] = useState(false); // 是否已下载
+  const [timerActive, setTimerActive] = useState(false); // 定时器是否激活
   
   if (!song) return null;
   
@@ -101,7 +102,7 @@ export const FullScreenPlayer = ({ onCollapse, song }: { onCollapse: () => void,
   
   // 循环模式切换
   const toggleRepeatMode = () => {
-    setRepeatMode((repeatMode + 1) % 3);
+    setRepeatMode((repeatMode + 1) % 4); // 现在有4种状态
   };
   
   // 获取重复图标
@@ -109,8 +110,14 @@ export const FullScreenPlayer = ({ onCollapse, song }: { onCollapse: () => void,
     switch (repeatMode) {
       case 1: return "repeat";
       case 2: return "repeat-once";
+      case 3: return "shuffle-variant";
       default: return "repeat-off";
     }
+  };
+  
+  // 获取图标颜色
+  const getRepeatIconColor = () => {
+    return repeatMode > 0 ? spotifyColors.primary : spotifyColors.inactive;
   };
   
   // 当前时间点（秒）
@@ -247,10 +254,10 @@ export const FullScreenPlayer = ({ onCollapse, song }: { onCollapse: () => void,
           {/* 控制按钮 */}
           <View style={styles.controlsContainer}>
             <IconButton
-              icon={isShuffle ? "shuffle-variant" : "shuffle-disabled"}
-              iconColor={isShuffle ? spotifyColors.primary : spotifyColors.inactive}
+              icon={getRepeatIcon()}
+              iconColor={getRepeatIconColor()}
               size={28}
-              onPress={() => setIsShuffle(!isShuffle)}
+              onPress={toggleRepeatMode}
             />
             <IconButton
               icon="skip-previous"
@@ -271,32 +278,34 @@ export const FullScreenPlayer = ({ onCollapse, song }: { onCollapse: () => void,
               onPress={() => {}}
             />
             <IconButton
-              icon={getRepeatIcon()}
-              iconColor={repeatMode > 0 ? spotifyColors.primary : spotifyColors.inactive}
+              icon="playlist-music"
+              iconColor={spotifyColors.inactive}
               size={28}
-              onPress={toggleRepeatMode}
+              onPress={() => {}}
             />
           </View>
           
-          {/* 底部功能栏 - 更加紧凑 */}
+          {/* 底部功能栏 */}
           <View style={styles.extraFeaturesContainer}>
             <View style={styles.extraControlsRow}>
               <TouchableOpacity style={styles.extraControl}>
                 <IconButton
-                  icon="cast"
-                  iconColor={spotifyColors.inactive}
+                  icon={isDownloaded ? "check-circle" : "download"}
+                  iconColor={isDownloaded ? spotifyColors.primary : spotifyColors.inactive}
                   size={24}
+                  onPress={() => setIsDownloaded(!isDownloaded)}
                 />
-                <Text style={styles.extraControlText}>投放</Text>
+                <Text style={styles.extraControlText}>{isDownloaded ? "已下载" : "下载"}</Text>
               </TouchableOpacity>
               
               <TouchableOpacity style={styles.extraControl}>
                 <IconButton
-                  icon="playlist-music"
-                  iconColor={spotifyColors.inactive}
+                  icon={timerActive ? "timer" : "timer-outline"}
+                  iconColor={timerActive ? spotifyColors.primary : spotifyColors.inactive}
                   size={24}
+                  onPress={() => setTimerActive(!timerActive)}
                 />
-                <Text style={styles.extraControlText}>播放列表</Text>
+                <Text style={styles.extraControlText}>定时器</Text>
               </TouchableOpacity>
               
               <TouchableOpacity style={styles.extraControl}>
@@ -381,15 +390,15 @@ const styles = StyleSheet.create({
   // 迷你播放器样式
   miniPlayer: {
     position: 'absolute',
-    bottom: 80, // 增加底部距离，为底部标签导航留出更多空间
+    bottom: 70, // 将bottom设为60，为标签导航栏预留空间，使悬浮条紧贴导航栏顶部
     left: 0,
     right: 0,
     height: 60,
     borderTopWidth: 1,
     borderTopColor: '#333',
-    borderBottomWidth: 1,
+    borderBottomWidth: 0,
     borderBottomColor: '#333',
-    zIndex: 1, // 降低z-index值，确保不会覆盖导航栏
+    zIndex: 1,
   },
   miniPlayerContent: {
     flexDirection: 'row',
@@ -451,7 +460,6 @@ const styles = StyleSheet.create({
     marginTop: 5,
     marginBottom: 5,
     maxHeight: screenHeight * 0.5, // 增大歌词区域高度，最多占屏幕一半高度
-    backgroundColor: 'rgba(0, 0, 0, 0.2)',
     borderRadius: 10,
   },
   lyricsScrollContent: {
