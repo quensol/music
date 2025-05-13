@@ -1,4 +1,4 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { DarkTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -30,6 +30,16 @@ export default function RootLayout() {
     },
   };
 
+  // 深色导航主题
+  const customDarkTheme = {
+    ...DarkTheme,
+    colors: {
+      ...DarkTheme.colors,
+      background: '#121212',
+      card: '#121212',
+    },
+  };
+
   if (!loaded) {
     // Async font loading only occurs in development.
     return null;
@@ -37,10 +47,19 @@ export default function RootLayout() {
 
   return (
     <PaperProvider theme={spotifyTheme}>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <View style={{ flex: 1 }}>
-          <Stack>
+      <ThemeProvider value={customDarkTheme}>
+        <View style={{ flex: 1, backgroundColor: '#121212' }}>
+          <Stack 
+            screenOptions={{ 
+              headerShown: false, 
+              animation: 'slide_from_right',
+              contentStyle: { backgroundColor: '#121212' }
+            }}
+          >
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="local-music" />
+            <Stack.Screen name="favorites" />
+            <Stack.Screen name="downloads" />
             <Stack.Screen name="+not-found" />
           </Stack>
           <StatusBar style="light" />
