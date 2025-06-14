@@ -2,7 +2,6 @@ import { MotiView } from 'moti';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { IconButton, Searchbar, Text, useTheme } from 'react-native-paper';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 // 音乐类别数据
 const categories = [
@@ -33,10 +32,10 @@ export default function SearchScreen() {
     inactive: '#b3b3b3', // 灰色，用于非活跃项
   };
 
-  const onChangeSearch = query => setSearchQuery(query);
+  const onChangeSearch = (query: string) => setSearchQuery(query);
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: spotifyColors.background }]}>
+    <View style={[styles.container, { backgroundColor: spotifyColors.background }]}>
       <View style={styles.header}>
         <Text style={[styles.title, { color: spotifyColors.text }]}>搜索</Text>
         <IconButton 
@@ -77,7 +76,7 @@ export default function SearchScreen() {
           </MotiView>
         ))}
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -109,7 +108,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    paddingBottom: 100, // 为底部播放器留出空间
+    paddingBottom: 100, // 为底部播放器留出空间（播放器高度增加到80px）
   },
   categoryCard: {
     width: '48%',

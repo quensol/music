@@ -14,7 +14,7 @@ const spotifyColors = {
 };
 
 // 定义APP路径类型
-type AppRoutes = '/local-music' | '/favorites' | '/downloads' | '/(tabs)/explore';
+type AppRoutes = '/local-music' | '/favorites' | '/downloads';
 
 export default function DownloadsScreen() {
   const router = useRouter();
@@ -47,9 +47,9 @@ export default function DownloadsScreen() {
     }, 1000);
   }, [router, isNavigating]);
 
-  // 导航到探索页面
-  const navigateToExplore = () => {
-    navigateWithDebounce('/(tabs)/explore');
+  // 导航到搜索页面
+  const navigateToSearch = () => {
+    navigateWithDebounce('/(tabs)/search' as any);
   };
 
   return (
@@ -107,12 +107,12 @@ export default function DownloadsScreen() {
                 { backgroundColor: spotifyColors.primary },
                 isNavigating && { opacity: 0.7 }
               ]} 
-              onPress={navigateToExplore}
+              onPress={navigateToSearch}
               contentStyle={styles.buttonContent}
               labelStyle={styles.buttonLabel}
               disabled={isNavigating}
             >
-              浏览音乐
+              搜索音乐
             </Button>
           </View>
         </ScrollView>

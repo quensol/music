@@ -1,7 +1,6 @@
 import { MotiView } from 'moti';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { Avatar, Button, Divider, List, Text } from 'react-native-paper';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 // 用户设置选项
 const settingsOptions = [
@@ -23,7 +22,7 @@ export default function ProfileScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: spotifyColors.background }]}>
+    <View style={[styles.container, { backgroundColor: spotifyColors.background }]}>
       <ScrollView>
         <MotiView
           from={{ opacity: 0, scale: 0.95 }}
@@ -105,7 +104,7 @@ export default function ProfileScreen() {
           </Button>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 

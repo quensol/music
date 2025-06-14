@@ -1,8 +1,6 @@
-import { LinearGradient } from 'expo-linear-gradient';
 import { MotiView } from 'moti';
 import { Image, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Card, IconButton, Paragraph, Text, Title } from 'react-native-paper';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 // 最近播放的数据
 const recentlyPlayed = [
@@ -115,12 +113,11 @@ export default function HomeScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: spotifyColors.background }}>
+    <View style={{ flex: 1, backgroundColor: spotifyColors.background }}>
       <ScrollView style={styles.container}>
-        {/* 顶部渐变和问候语 */}
-        <LinearGradient
-          colors={['#4A3030', spotifyColors.background]}
-          style={styles.headerGradient}
+        {/* 顶部区域和问候语 */}
+        <View
+          style={[styles.headerGradient, { backgroundColor: spotifyColors.background }]}
         >
           <View style={styles.header}>
             <Text style={styles.greeting}>{getGreeting()}</Text>
@@ -167,7 +164,7 @@ export default function HomeScreen() {
               </MotiView>
             ))}
           </ScrollView>
-        </LinearGradient>
+        </View>
         
         {/* 为你推荐 */}
         <View style={styles.section}>
@@ -224,9 +221,9 @@ export default function HomeScreen() {
         </View>
         
         {/* 底部空间，为播放器留出位置 */}
-        <View style={{ height: 80 }} />
+        <View style={{ height: 100 }} />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 

@@ -1,56 +1,37 @@
+import { getAllPlaylists } from '@/config/playlists';
+import { usePlayer } from '@/contexts/PlayerContext';
 import { useRouter } from 'expo-router';
 import { MotiView } from 'moti';
 import { useCallback, useState } from 'react';
 import { Image, ScrollView, StyleSheet, View } from 'react-native';
 import { Card, Divider, IconButton, Text, TouchableRipple } from 'react-native-paper';
-import { SafeAreaView } from 'react-native-safe-area-context';
-
-// 播放列表示例数据
-const playlists = [
-  { 
-    id: 1, 
-    name: '我喜欢的音乐', 
-    description: '40首歌曲',
-    image: 'https://i.scdn.co/image/ab67706f00000002ca5a7517156021292e5663a4'
-  },
-  { 
-    id: 2, 
-    name: '每日推荐', 
-    description: '根据你的收听习惯推荐',
-    image: 'https://dailymix-images.scdn.co/v2/img/ab6761610000e5ebcdce7620dc940db079bf4952/1/zh/default'
-  },
-  { 
-    id: 3, 
-    name: '心情舒缓', 
-    description: '轻松的音乐帮你放松心情',
-    image: 'https://i.scdn.co/image/ab67706f000000025551996f500ba876bda73fa5'
-  },
-  { 
-    id: 4, 
-    name: '专注工作', 
-    description: '提高工作效率的音乐集',
-    image: 'https://i.scdn.co/image/ab67706f00000002724554ed6bed6f051d9b0bfc'
-  },
-  { 
-    id: 5, 
-    name: '流行热歌', 
-    description: '当下最流行的歌曲',
-    image: 'https://i.scdn.co/image/ab67706f0000000278b4745cb9ce8ffe32d778b8'
-  },
-];
 
 // 定义APP路径类型
 type AppRoutes = 
   | '/local-music' 
   | '/favorites' 
-  | '/downloads' 
-  | '/(tabs)/explore';
+  | '/downloads';
 
 export default function LibraryScreen() {
   const router = useRouter();
+  const { recentlyPlayed } = usePlayer();
   const [sortOrder, setSortOrder] = useState('最近');
   const [isNavigating, setIsNavigating] = useState(false);
   
+  // 获取歌单数据
+  const staticPlaylists = getAllPlaylists();
+  
+  // 创建完整的歌单列表，最近播放在顶部
+  const playlists = [
+    {
+      id: 'recently-played',
+      name: '最近播放',
+      description: `${recentlyPlayed.length}首歌曲`,
+      image: 'https://i.scdn.co/image/ab67706f00000002ca5a7517156021292e5663a4'
+    },
+    ...staticPlaylists.filter(p => p.id !== 'recently-played') // 过滤掉静态配置中的最近播放
+  ];
+
   // Spotify主题颜色
   const spotifyColors = {
     primary: '#1DB954', // Spotify绿色
@@ -62,8 +43,7 @@ export default function LibraryScreen() {
 
   // 处理播放列表点击事件
   const handlePlaylistPress = (playlist: any) => {
-    // 这里稍后实现播放列表打开逻辑
-    console.log('打开播放列表:', playlist.name);
+    router.push(`/playlist/${playlist.id}` as any);
   };
 
   // 添加防抖导航功能
@@ -136,7 +116,7 @@ export default function LibraryScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: spotifyColors.background }]}>
+    <View style={[styles.container, { backgroundColor: spotifyColors.background }]}>
       <View style={styles.header}>
         <View style={styles.headerTitleContainer}>
           <Image 
@@ -212,7 +192,7 @@ export default function LibraryScreen() {
           </MotiView>
         ))}
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 

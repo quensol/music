@@ -7,6 +7,7 @@ import { MD3DarkTheme, MD3LightTheme, PaperProvider } from 'react-native-paper';
 import 'react-native-reanimated';
 
 import MusicPlayer from '@/components/MusicPlayer';
+import { PlayerProvider } from '@/contexts/PlayerContext';
 import { useColorScheme } from '@/hooks/useColorScheme';
 
 export default function RootLayout() {
@@ -48,23 +49,25 @@ export default function RootLayout() {
   return (
     <PaperProvider theme={spotifyTheme}>
       <ThemeProvider value={customDarkTheme}>
-        <View style={{ flex: 1, backgroundColor: '#121212' }}>
-          <Stack 
-            screenOptions={{ 
-              headerShown: false, 
-              animation: 'slide_from_right',
-              contentStyle: { backgroundColor: '#121212' }
-            }}
-          >
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="local-music" />
-            <Stack.Screen name="favorites" />
-            <Stack.Screen name="downloads" />
-            <Stack.Screen name="+not-found" />
-          </Stack>
-          <StatusBar style="light" />
-          <MusicPlayer />
-        </View>
+        <PlayerProvider>
+          <View style={{ flex: 1, backgroundColor: '#121212' }}>
+            <Stack 
+              screenOptions={{ 
+                headerShown: false, 
+                animation: 'slide_from_right',
+                contentStyle: { backgroundColor: '#121212' }
+              }}
+            >
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen name="local-music" />
+              <Stack.Screen name="favorites" />
+              <Stack.Screen name="downloads" />
+              <Stack.Screen name="+not-found" />
+            </Stack>
+            <StatusBar style="light" />
+            <MusicPlayer />
+          </View>
+        </PlayerProvider>
       </ThemeProvider>
     </PaperProvider>
   );

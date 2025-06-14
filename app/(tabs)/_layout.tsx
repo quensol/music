@@ -1,17 +1,21 @@
-import { Tabs } from 'expo-router';
+import type { MaterialTopTabNavigationEventMap, MaterialTopTabNavigationOptions } from '@react-navigation/material-top-tabs';
+import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
+import type { ParamListBase, TabNavigationState } from '@react-navigation/native';
+import { withLayoutContext } from 'expo-router';
 import React from 'react';
 import { Platform } from 'react-native';
-import { useTheme } from 'react-native-paper';
 
-import { HapticTab } from '@/components/HapticTab';
-import { IconSymbol } from '@/components/ui/IconSymbol';
-import TabBarBackground from '@/components/ui/TabBarBackground';
-import { useColorScheme } from '@/hooks/useColorScheme';
+
+const { Navigator } = createMaterialTopTabNavigator();
+
+export const MaterialTopTabs = withLayoutContext<
+  MaterialTopTabNavigationOptions,
+  typeof Navigator,
+  TabNavigationState<ParamListBase>,
+  MaterialTopTabNavigationEventMap
+>(Navigator);
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
-  const theme = useTheme();
-  
   // Spotify主题颜色
   const spotifyColors = {
     primary: '#1DB954', // Spotify绿色
@@ -22,54 +26,63 @@ export default function TabLayout() {
   };
 
   return (
-    <Tabs
+    <MaterialTopTabs
       screenOptions={{
         tabBarActiveTintColor: spotifyColors.primary,
         tabBarInactiveTintColor: spotifyColors.inactive,
-        headerShown: false,
-        tabBarButton: HapticTab,
-        tabBarBackground: TabBarBackground,
-        tabBarStyle: Platform.select({
-          ios: {
-            // 使用透明背景在iOS上显示模糊效果
-            position: 'absolute',
-            backgroundColor: spotifyColors.background,
-            zIndex: 10, // 确保在播放器上方
-          },
-          default: {
-            backgroundColor: spotifyColors.background,
-            zIndex: 10, // 确保在播放器上方
-          },
-        }),
+        tabBarStyle: {
+          backgroundColor: spotifyColors.background,
+          paddingTop: Platform.select({
+            ios: 60, // 为iOS状态栏留出更多空间
+            android: 50, // 为Android状态栏留出更多空间
+            default: 50,
+          }),
+          height: Platform.select({
+            ios: 120, // iOS总高度
+            android: 110, // Android总高度
+            default: 110,
+          }),
+          elevation: 0,
+          shadowOpacity: 0,
+        },
+        tabBarIndicatorStyle: {
+          backgroundColor: spotifyColors.primary,
+          height: 3,
+        },
+        tabBarLabelStyle: {
+          fontSize: 14,
+          fontWeight: 'bold',
+          textTransform: 'none',
+        },
+        tabBarItemStyle: {
+          paddingVertical: 16,
+          height: 60, // 增加每个tab项的高度
+        },
       }}>
-      <Tabs.Screen
+      <MaterialTopTabs.Screen
         name="index"
         options={{
           title: '首页',
-          tabBarIcon: ({ color }) => <IconSymbol size={24} name="house.fill" color={color} />,
         }}
       />
-      <Tabs.Screen
+      <MaterialTopTabs.Screen
         name="search"
         options={{
           title: '搜索',
-          tabBarIcon: ({ color }) => <IconSymbol size={24} name="magnifyingglass" color={color} />,
         }}
       />
-      <Tabs.Screen
+      <MaterialTopTabs.Screen
         name="library"
         options={{
           title: '音乐库',
-          tabBarIcon: ({ color }) => <IconSymbol size={24} name="books.vertical.fill" color={color} />,
         }}
       />
-      <Tabs.Screen
+      <MaterialTopTabs.Screen
         name="profile"
         options={{
           title: '我的',
-          tabBarIcon: ({ color }) => <IconSymbol size={24} name="person.fill" color={color} />,
         }}
       />
-    </Tabs>
+    </MaterialTopTabs>
   );
 }

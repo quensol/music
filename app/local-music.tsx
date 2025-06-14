@@ -1,12 +1,79 @@
+import { Song as PlayerSong, usePlayer } from '@/contexts/PlayerContext';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { MotiView } from 'moti';
-import { useCallback, useEffect, useState } from 'react';
+import { pinyin } from 'pinyin-pro';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { FlatList, Image, ScrollView, StyleSheet, View } from 'react-native';
 import { Divider, IconButton, Text, TouchableRipple } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AlbumWall, { Album as AlbumType } from '../components/AlbumWall';
+import AlphabetIndex from '../components/AlphabetIndex';
 import SongList, { Song } from '../components/SongList';
 import { albums } from '../config/albums';
+
+// 获取歌曲标题的首字母（支持中文拼音）
+const getFirstLetter = (title: string): string => {
+  const firstChar = title.charAt(0);
+  
+  // 检查是否为中文字符
+  if (/[\u4e00-\u9fa5]/.test(firstChar)) {
+    // 中文字符转拼音，取首字母
+    const pinyinResult = pinyin(firstChar, { toneType: 'none', type: 'first' });
+    return pinyinResult.toUpperCase();
+  }
+  
+  // 英文字符直接转大写
+  const upperChar = firstChar.toUpperCase();
+  return /^[A-Z]$/.test(upperChar) ? upperChar : '#';
+};
+
+// 获取完整拼音用于排序
+const getPinyinForSort = (title: string): string => {
+  // 检查是否包含中文字符
+  if (/[\u4e00-\u9fa5]/.test(title)) {
+    // 转换为拼音，不带声调
+    return pinyin(title, { toneType: 'none', separator: '' });
+  }
+  // 非中文直接返回原文
+  return title;
+};
+
+// 按字母排序歌曲（支持中文拼音排序）
+const sortSongsByAlphabet = (songs: Song[]): Song[] => {
+  return [...songs].sort((a, b) => {
+    const letterA = getFirstLetter(a.title);
+    const letterB = getFirstLetter(b.title);
+    
+    // '#' 排在最前面
+    if (letterA === '#' && letterB !== '#') return -1;
+    if (letterA !== '#' && letterB === '#') return 1;
+    
+    // 字母排序
+    if (letterA !== letterB) {
+      return letterA.localeCompare(letterB);
+    }
+    
+    // 同一字母内按拼音排序
+    const pinyinA = getPinyinForSort(a.title);
+    const pinyinB = getPinyinForSort(b.title);
+    return pinyinA.localeCompare(pinyinB);
+  });
+};
+
+// 创建字母索引映射
+const createAlphabetIndex = (songs: Song[]): Map<string, number> => {
+  const indexMap = new Map<string, number>();
+  
+  songs.forEach((song, index) => {
+    const letter = getFirstLetter(song.title);
+    if (!indexMap.has(letter)) {
+      indexMap.set(letter, index);
+    }
+  });
+  
+  return indexMap;
+};
 
 // 将albums中的歌曲转换为本地歌曲格式
 const convertAlbumsToLocalSongs = () => {
@@ -20,7 +87,8 @@ const convertAlbumsToLocalSongs = () => {
         artist: album.artist,
         album: album.title,
         duration: song.duration || '',
-        albumCover: album.cover
+        albumCover: album.cover,
+        file_url: song.file_url // 保留原始的file_url
       });
     });
   });
@@ -68,7 +136,7 @@ const generateAlbums = (): AlbumType[] => {
         id: song.id,
         title: song.title,
         artist: song.artist,
-        file_url: '', // 本地歌曲暂无文件URL
+        file_url: song.file_url || '', // 保留原始的file_url
         duration: song.duration
       });
     }
@@ -120,21 +188,76 @@ type ViewType = 'songs' | 'albums' | 'artists' | 'folders';
 
 export default function LocalMusicScreen() {
   const router = useRouter();
+  const { playSong } = usePlayer();
   const [isNavigatingBack, setIsNavigatingBack] = useState(false);
   const [currentView, setCurrentView] = useState<ViewType>('songs');
   const [albums, setAlbums] = useState<AlbumType[]>([]);
   const [artists, setArtists] = useState<Artist[]>([]);
+  const [sortedSongs, setSortedSongs] = useState<Song[]>([]);
+  const [alphabetIndex, setAlphabetIndex] = useState<Map<string, number>>(new Map());
+  const [activeIndexLetter, setActiveIndexLetter] = useState<string>('');
+  const songListRef = useRef<FlatList>(null);
   
   // 初始化专辑和艺术家数据
   useEffect(() => {
     setAlbums(generateAlbums());
     setArtists(generateArtists());
+    
+    // 对歌曲进行字母排序并创建索引
+    const sorted = sortSongsByAlphabet(localSongs);
+    setSortedSongs(sorted);
+    setAlphabetIndex(createAlphabetIndex(sorted));
   }, []);
   
+  // 处理字母索引点击
+  const handleLetterPress = (letter: string) => {
+    const index = alphabetIndex.get(letter);
+    if (index !== undefined && songListRef.current) {
+      setActiveIndexLetter(letter);
+      songListRef.current.scrollToIndex({
+        index,
+        animated: true,
+        viewPosition: 0.1, // 滚动到顶部附近
+      });
+      
+      // 2秒后清除高亮
+      setTimeout(() => {
+        setActiveIndexLetter('');
+      }, 2000);
+    }
+  };
+
   // 处理歌曲点击事件
-  const handleSongPress = (song: Song) => {
-    // 这里稍后实现播放逻辑
+  const handleSongPress = async (song: Song) => {
     console.log('播放歌曲:', song.title);
+    
+    // 转换为PlayerSong格式
+    const playerSong: PlayerSong = {
+      id: song.id,
+      title: song.title,
+      artist: song.artist,
+      album: song.album,
+      image: song.albumCover,
+      file_url: song.file_url || '', // 使用歌曲的真实file_url
+      duration: typeof song.duration === 'string' ? parseInt(song.duration) || 0 : song.duration,
+    };
+    
+    // 将所有排序后的歌曲作为播放列表
+    const playlist: PlayerSong[] = sortedSongs.map(s => ({
+      id: s.id,
+      title: s.title,
+      artist: s.artist,
+      album: s.album,
+      image: s.albumCover,
+      file_url: s.file_url || '', // 使用歌曲的真实file_url
+      duration: typeof s.duration === 'string' ? parseInt(s.duration) || 0 : s.duration,
+    }));
+    
+    // 找到当前歌曲在排序后播放列表中的索引
+    const currentIndex = sortedSongs.findIndex(s => s.id === song.id);
+    
+    // 使用全局播放器播放歌曲
+    await playSong(playerSong, playlist, currentIndex);
   };
 
   // 添加防抖返回功能
@@ -205,7 +328,15 @@ export default function LocalMusicScreen() {
         borderless
       >
         <View style={styles.artistContainer}>
-          <Image source={{ uri: item.image }} style={styles.artistImage} />
+          <View style={styles.artistImageContainer}>
+            <Image source={{ uri: item.image }} style={styles.artistImage} />
+            <LinearGradient
+              colors={['rgba(29, 185, 84, 0.2)', 'rgba(0, 0, 0, 0)']}
+              style={styles.artistImageGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            />
+          </View>
           <Text style={[styles.artistName, { color: spotifyColors.text }]} numberOfLines={1}>
             {item.name}
           </Text>
@@ -257,11 +388,12 @@ export default function LocalMusicScreen() {
       case 'songs':
         return (
           <SongList
-            songs={localSongs}
+            songs={sortedSongs}
             onSongPress={handleSongPress}
             backgroundColor={spotifyColors.background}
             textColor={spotifyColors.text}
             secondaryTextColor={spotifyColors.inactive}
+            songListRef={songListRef}
           />
         );
       case 'albums':
@@ -269,23 +401,21 @@ export default function LocalMusicScreen() {
           <View style={{ flex: 1, width: '100%' }}>
             <AlbumWall
               albums={albums}
-              onSongSelect={(album, songIndex) => {
-                console.log('播放专辑:', album.title, '歌曲索引:', songIndex);
-              }}
             />
           </View>
         );
       case 'artists':
         return (
           <FlatList
-            key="artists-grid-2-columns"
+            key="artists-grid-3-columns"
             data={artists}
             renderItem={renderArtistItem}
             keyExtractor={item => item.id.toString()}
-            numColumns={2}
+            numColumns={3}
             columnWrapperStyle={styles.artistsGrid}
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingBottom: 80 }}
+            contentContainerStyle={{ paddingBottom: 100, width: '100%' }}
+            style={{ width: '100%' }}
           />
         );
       case 'folders':
@@ -296,7 +426,7 @@ export default function LocalMusicScreen() {
             renderItem={renderFolderItem}
             keyExtractor={item => item.id.toString()}
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingBottom: 80 }}
+            contentContainerStyle={{ paddingBottom: 100 }}
           />
         );
     }
@@ -306,7 +436,7 @@ export default function LocalMusicScreen() {
   const getCurrentItemCount = () => {
     switch (currentView) {
       case 'songs':
-        return localSongs.length;
+        return sortedSongs.length;
       case 'albums':
         return albums.length;
       case 'artists':
@@ -372,8 +502,8 @@ export default function LocalMusicScreen() {
                 styles.tabText, 
                 currentView === 'songs' && styles.activeTabText
               ]}
-            >
-              单曲
+          >
+            单曲
             </Text>
           </TouchableRipple>
           
@@ -391,8 +521,8 @@ export default function LocalMusicScreen() {
                 styles.tabText, 
                 currentView === 'albums' && styles.activeTabText
               ]}
-            >
-              专辑
+          >
+            专辑
             </Text>
           </TouchableRipple>
           
@@ -410,8 +540,8 @@ export default function LocalMusicScreen() {
                 styles.tabText, 
                 currentView === 'artists' && styles.activeTabText
               ]}
-            >
-              歌手
+          >
+            歌手
             </Text>
           </TouchableRipple>
           
@@ -429,8 +559,8 @@ export default function LocalMusicScreen() {
                 styles.tabText, 
                 currentView === 'folders' && styles.activeTabText
               ]}
-            >
-              文件夹
+          >
+            文件夹
             </Text>
           </TouchableRipple>
         </ScrollView>
@@ -460,6 +590,14 @@ export default function LocalMusicScreen() {
         <View style={{ flex: 1 }}>
           {renderContent()}
         </View>
+        
+        {/* 字母索引 - 只在单曲视图时显示 */}
+        {currentView === 'songs' && (
+          <AlphabetIndex
+            onLetterPress={handleLetterPress}
+            activeIndex={activeIndexLetter}
+          />
+        )}
       </SafeAreaView>
     </View>
   );
@@ -573,30 +711,56 @@ const styles = StyleSheet.create({
   artistsGrid: {
     justifyContent: 'space-between',
     marginBottom: 16,
+    width: '100%',
   },
   artistItem: {
-    width: '100%',
+    width: '30%',
     marginBottom: 20,
     borderRadius: 8,
     overflow: 'hidden',
   },
   artistContainer: {
     alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  artistImageContainer: {
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+    position: 'relative',
   },
   artistImage: {
-    width: '80%',
+    width: '85%',
     aspectRatio: 1,
     borderRadius: 100,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  artistImageGradient: {
+    position: 'absolute',
+    top: 0,
+    left: '7.5%',
+    right: '7.5%',
+    bottom: 0,
+    borderRadius: 100,
+    opacity: 0.7,
   },
   artistName: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: 'bold',
-    marginTop: 8,
+    marginTop: 6,
     textAlign: 'center',
+    paddingHorizontal: 2,
   },
   artistSongs: {
-    fontSize: 12,
-    marginTop: 4,
+    fontSize: 11,
+    marginTop: 2,
     textAlign: 'center',
   },
   folderItem: {

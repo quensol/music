@@ -1,9 +1,13 @@
+import { Ionicons } from '@expo/vector-icons';
 import Slider from '@react-native-community/slider';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MotiView } from 'moti';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Dimensions, Image, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { IconButton, Text } from 'react-native-paper';
+
+import { LyricLine, usePlayer } from '@/contexts/PlayerContext';
+
 
 // Spotify主题颜色
 const spotifyColors = {
@@ -17,28 +21,45 @@ const spotifyColors = {
 // 获取屏幕尺寸以适配不同设备
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
-// 歌曲类型定义
-interface Song {
-  id: number;
-  title: string;
-  artist: string;
-  album: string;
-  image: string;
-  duration: number;
-  lyrics?: LyricLine[];
-}
 
-// 歌词行类型定义
-interface LyricLine {
-  time: number; // 时间戳（秒）
-  text: string; // 歌词文本
-}
 
 // 迷你播放器（底部固定）
-export const MiniPlayer = ({ onExpand, song }: { onExpand: () => void, song: Song }) => {
-  const [isPlaying, setIsPlaying] = useState(false);
+export const MiniPlayer = ({ onExpand }: { onExpand: () => void }) => {
+  const { playerState, togglePlayPause, isFavorite, addToFavorites, removeFromFavorites } = usePlayer();
+  const [isToggling, setIsToggling] = useState(false);
   
-  if (!song) return null;
+  // 监听播放状态变化
+  useEffect(() => {
+    console.log('MiniPlayer: playerState updated:', {
+      isPlaying: playerState.isPlaying,
+      currentSong: playerState.currentSong?.title
+    });
+  }, [playerState.isPlaying, playerState.currentSong]);
+  
+  if (!playerState.currentSong) return null;
+  
+  const song = playerState.currentSong;
+  
+  const handleTogglePlayPause = async () => {
+    setIsToggling(true);
+    try {
+      await togglePlayPause();
+    } catch (error) {
+      console.error('MiniPlayer: Error in togglePlayPause:', error);
+    }
+    // 添加短暂延迟以显示视觉反馈
+    setTimeout(() => setIsToggling(false), 200);
+  };
+
+  const handleToggleFavorite = () => {
+    if (!song) return;
+    
+    if (isFavorite(song.id)) {
+      removeFromFavorites(song.id);
+    } else {
+      addToFavorites(song);
+    }
+  };
   
   return (
     <MotiView
@@ -47,58 +68,115 @@ export const MiniPlayer = ({ onExpand, song }: { onExpand: () => void, song: Son
       transition={{ type: 'spring', damping: 20 }}
       style={[styles.miniPlayer, { backgroundColor: spotifyColors.card }]}
     >
-      <TouchableOpacity style={styles.miniPlayerContent} onPress={onExpand}>
-        <Image source={{ uri: song.image }} style={styles.miniPlayerImage} />
-        <View style={styles.miniPlayerInfo}>
-          <Text style={{ color: spotifyColors.text, fontWeight: 'bold' }} numberOfLines={1}>
-            {song.title}
-          </Text>
-          <Text style={{ color: spotifyColors.inactive }} numberOfLines={1}>
-            {song.artist}
-          </Text>
-        </View>
+      <View style={styles.miniPlayerContent}>
+        <TouchableOpacity style={styles.miniPlayerMainArea} onPress={onExpand}>
+          <View style={styles.miniImageContainer}>
+            <Image source={{ uri: song.image }} style={styles.miniPlayerImage} />
+            {playerState.isPlaying && (
+              <View style={styles.miniPlayingIndicator}>
+                <View style={styles.miniPlayingDot} />
+              </View>
+            )}
+          </View>
+          <View style={styles.miniPlayerInfo}>
+            <Text style={{ color: spotifyColors.text, fontWeight: 'bold' }} numberOfLines={1}>
+              {song.title}
+            </Text>
+            <Text style={{ color: spotifyColors.inactive }} numberOfLines={1}>
+              {song.artist}
+            </Text>
+          </View>
+        </TouchableOpacity>
         <View style={styles.miniPlayerControls}>
           <IconButton
-            icon="heart-outline"
-            iconColor={spotifyColors.inactive}
+            icon={isFavorite(song.id) ? "heart" : "heart-outline"}
+            iconColor={isFavorite(song.id) ? spotifyColors.primary : spotifyColors.inactive}
             size={24}
-            onPress={() => {}}
+            onPress={handleToggleFavorite}
           />
-          <IconButton
-            icon={isPlaying ? "pause" : "play"}
-            iconColor={spotifyColors.text}
-            size={24}
-            style={{ backgroundColor: spotifyColors.primary, margin: 0 }}
-            onPress={() => setIsPlaying(!isPlaying)}
-          />
+          <TouchableOpacity
+            onPress={handleTogglePlayPause}
+            style={[
+              styles.miniPlayButton,
+              { 
+                backgroundColor: isToggling ? spotifyColors.inactive : spotifyColors.primary,
+                opacity: isToggling ? 0.7 : 1,
+                width: 44,
+                height: 44,
+                borderRadius: 22,
+                justifyContent: 'center',
+                alignItems: 'center',
+                shadowColor: '#000',
+                shadowOffset: {
+                  width: 0,
+                  height: 2,
+                },
+                shadowOpacity: 0.25,
+                shadowRadius: 3.84,
+                elevation: 5,
+              }
+            ]}
+            activeOpacity={0.8}
+            disabled={false}
+          >
+            <Ionicons 
+              name={playerState.isPlaying ? "pause" : "play"} 
+              size={20} 
+              color={spotifyColors.background} 
+            />
+          </TouchableOpacity>
         </View>
-      </TouchableOpacity>
+      </View>
     </MotiView>
   );
 };
 
 // 全屏播放器
-export const FullScreenPlayer = ({ onCollapse, song }: { onCollapse: () => void, song: Song }) => {
-  const [isPlaying, setIsPlaying] = useState(false);
+export const FullScreenPlayer = ({ onCollapse }: { onCollapse: () => void }) => {
+  const { playerState, togglePlayPause, playNext, playPrevious, setPosition, isFavorite, addToFavorites, removeFromFavorites } = usePlayer();
   const [repeatMode, setRepeatMode] = useState(0); // 0: 不重复, 1: 重复全部, 2: 重复当前, 3: 随机播放
-  const [progress, setProgress] = useState(0.3); // 播放进度，0-1之间
   const [showLyrics, setShowLyrics] = useState(false); // 是否显示歌词
   const [isDownloaded, setIsDownloaded] = useState(false); // 是否已下载
   const [timerActive, setTimerActive] = useState(false); // 定时器是否激活
+  const [isToggling, setIsToggling] = useState(false);
   
-  if (!song) return null;
+  if (!playerState.currentSong) return null;
   
-  // 格式化时间
-  const formatTime = (seconds: number) => {
+  const song = playerState.currentSong;
+  
+  // 格式化时间（毫秒转换为秒）
+  const formatTime = (milliseconds: number) => {
+    const seconds = Math.floor(milliseconds / 1000);
     const min = Math.floor(seconds / 60);
-    const sec = Math.floor(seconds % 60);
+    const sec = seconds % 60;
     return `${min}:${sec < 10 ? '0' + sec : sec}`;
   };
   
-  // 当前播放时间
-  const currentTime = formatTime(progress * song.duration);
-  // 总时长
-  const totalTime = formatTime(song.duration);
+  // 计算进度（0-1之间）
+  const actualProgress = playerState.duration > 0 ? playerState.currentTime / playerState.duration : 0;
+  const progress = isDragging ? dragValue : actualProgress;
+  
+  // 当前播放时间和总时长
+  const currentTime = formatTime(isDragging ? dragValue * playerState.duration : playerState.currentTime);
+  const totalTime = formatTime(playerState.duration);
+  
+  // 处理进度条拖拽
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragValue, setDragValue] = useState(0);
+
+  const handleProgressChange = (value: number) => {
+    setDragValue(value);
+  };
+
+  const handleProgressStart = () => {
+    setIsDragging(true);
+  };
+
+  const handleProgressComplete = async (value: number) => {
+    setIsDragging(false);
+    const newTime = value * playerState.duration;
+    await setPosition(newTime);
+  };
   
   // 循环模式切换
   const toggleRepeatMode = () => {
@@ -121,7 +199,7 @@ export const FullScreenPlayer = ({ onCollapse, song }: { onCollapse: () => void,
   };
   
   // 当前时间点（秒）
-  const currentTimeInSeconds = progress * song.duration;
+  const currentTimeInSeconds = (isDragging ? dragValue * playerState.duration : playerState.currentTime) / 1000;
   
   // 查找当前播放位置对应的歌词
   const getCurrentLyric = () => {
@@ -143,6 +221,18 @@ export const FullScreenPlayer = ({ onCollapse, song }: { onCollapse: () => void,
   // 切换歌词/封面显示
   const toggleLyricsView = () => {
     setShowLyrics(!showLyrics);
+  };
+  
+  // 处理播放/暂停按钮点击
+  const handleTogglePlayPause = async () => {
+    setIsToggling(true);
+    try {
+      await togglePlayPause();
+    } catch (error) {
+      console.error('FullScreenPlayer: Error in togglePlayPause:', error);
+    }
+    // 添加短暂延迟以显示视觉反馈
+    setTimeout(() => setIsToggling(false), 200);
   };
   
   return (
@@ -184,7 +274,7 @@ export const FullScreenPlayer = ({ onCollapse, song }: { onCollapse: () => void,
           >
             <ScrollView contentContainerStyle={styles.lyricsScrollContent}>
               {song.lyrics ? (
-                song.lyrics.map((line, index) => (
+                song.lyrics.map((line: LyricLine, index: number) => (
                   <Text
                     key={index}
                     style={[
@@ -209,10 +299,33 @@ export const FullScreenPlayer = ({ onCollapse, song }: { onCollapse: () => void,
           >
             <MotiView
               from={{ scale: 0.95, opacity: 0.5 }}
-              animate={{ scale: 1, opacity: 1 }}
+              animate={{ 
+                scale: 1, 
+                opacity: 1,
+                rotate: playerState.isPlaying ? '0deg' : '0deg' // 可以添加旋转动画
+              }}
               transition={{ type: 'spring', damping: 15 }}
             >
-              <Image source={{ uri: song.image }} style={styles.coverImage} />
+              <View style={[
+                styles.coverImageContainer,
+                { 
+                  borderColor: playerState.isPlaying ? spotifyColors.primary : 'transparent',
+                  borderWidth: playerState.isPlaying ? 2 : 0,
+                }
+              ]}>
+                <Image source={{ uri: song.image }} style={styles.coverImage} />
+                {/* 播放状态指示器 */}
+                {playerState.isPlaying && (
+                  <MotiView
+                    from={{ scale: 0, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 0.8 }}
+                    transition={{ type: 'spring', damping: 15 }}
+                    style={styles.playingIndicator}
+                  >
+                    <View style={styles.playingDot} />
+                  </MotiView>
+                )}
+              </View>
             </MotiView>
           </TouchableOpacity>
         )}
@@ -224,10 +337,16 @@ export const FullScreenPlayer = ({ onCollapse, song }: { onCollapse: () => void,
             <Text style={styles.artistName}>{song.artist}</Text>
           </View>
           <IconButton
-            icon="heart-outline"
-            iconColor={spotifyColors.inactive}
+            icon={isFavorite(song.id) ? "heart" : "heart-outline"}
+            iconColor={isFavorite(song.id) ? spotifyColors.primary : spotifyColors.inactive}
             size={24}
-            onPress={() => {}}
+            onPress={() => {
+              if (isFavorite(song.id)) {
+                removeFromFavorites(song.id);
+              } else {
+                addToFavorites(song);
+              }
+            }}
           />
         </View>
         
@@ -240,7 +359,9 @@ export const FullScreenPlayer = ({ onCollapse, song }: { onCollapse: () => void,
               minimumValue={0}
               maximumValue={1}
               value={progress}
-              onValueChange={setProgress}
+              onValueChange={handleProgressChange}
+              onSlidingStart={handleProgressStart}
+              onSlidingComplete={handleProgressComplete}
               minimumTrackTintColor={spotifyColors.primary}
               maximumTrackTintColor={spotifyColors.inactive}
               thumbTintColor={spotifyColors.text}
@@ -263,19 +384,45 @@ export const FullScreenPlayer = ({ onCollapse, song }: { onCollapse: () => void,
               icon="skip-previous"
               iconColor={spotifyColors.text}
               size={45}
-              onPress={() => {}}
+              onPress={playPrevious}
             />
-            <IconButton
-              icon={isPlaying ? "pause-circle" : "play-circle"}
-              iconColor={spotifyColors.text}
-              size={70}
-              onPress={() => setIsPlaying(!isPlaying)}
-            />
+            <TouchableOpacity
+              onPress={handleTogglePlayPause}
+              style={[
+                styles.mainPlayButton,
+                { 
+                  opacity: isToggling ? 0.7 : 1,
+                  transform: [{ scale: isToggling ? 0.95 : 1 }],
+                  width: 84,
+                  height: 84,
+                  borderRadius: 42,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  backgroundColor: spotifyColors.primary,
+                  shadowColor: '#000',
+                  shadowOffset: {
+                    width: 0,
+                    height: 4,
+                  },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 6,
+                  elevation: 8,
+                }
+              ]}
+              activeOpacity={0.8}
+              disabled={false}
+            >
+              <Ionicons 
+                name={playerState.isPlaying ? "pause" : "play"} 
+                size={36} 
+                color={spotifyColors.background} 
+              />
+            </TouchableOpacity>
             <IconButton
               icon="skip-next"
               iconColor={spotifyColors.text}
               size={45}
-              onPress={() => {}}
+              onPress={playNext}
             />
             <IconButton
               icon="playlist-music"
@@ -327,50 +474,18 @@ export const FullScreenPlayer = ({ onCollapse, song }: { onCollapse: () => void,
 // 默认导出的播放器组件
 export default function MusicPlayer() {
   const [expanded, setExpanded] = useState(false);
+  const { playerState } = usePlayer();
   
-  // 当前歌曲示例数据
-  const currentSong = {
-    id: 1,
-    title: "晴天",
-    artist: "周杰伦",
-    album: "叶惠美",
-    image: "https://via.placeholder.com/300x300/1DB954/FFFFFF?text=晴天",
-    duration: 269, // 歌曲长度（秒）
-    lyrics: [
-      { time: 0, text: "故事的小黄花" },
-      { time: 5, text: "从出生那年就飘着" },
-      { time: 10, text: "童年的荡秋千" },
-      { time: 14, text: "随记忆一直晃到现在" },
-      { time: 20, text: "Re So So Si Do Si La" },
-      { time: 25, text: "So La Si Si Si Si La Si La So" },
-      { time: 30, text: "吹着前奏望着天空" },
-      { time: 35, text: "我想起花瓣试着掉落" },
-      { time: 40, text: "为你翘课的那一天" },
-      { time: 45, text: "花落的那一天" },
-      { time: 50, text: "教室的那一间" },
-      { time: 55, text: "我怎么看不见" },
-      { time: 60, text: "消失的下雨天" },
-      { time: 65, text: "我好想再淋一遍" },
-      { time: 70, text: "没想到失去的勇气我还留着" },
-      { time: 80, text: "好想再问一遍" },
-      { time: 85, text: "你会等待还是离开" },
-      { time: 90, text: "刮风这天我试过握着你手" },
-      { time: 100, text: "但偏偏雨渐渐大到我看你不见" },
-      { time: 110, text: "还要多久我才能在你身边" },
-      { time: 120, text: "等到放晴的那天也许我会比较好一点" },
-      { time: 130, text: "从前从前有个人爱你很久" },
-      { time: 140, text: "但偏偏风渐渐把距离吹得好远" },
-      { time: 150, text: "好不容易又能再多爱一天" },
-      { time: 160, text: "但故事的最后你好像还是说了拜拜" },
-    ]
-  };
+  // 只有当前有歌曲时才显示播放器
+  if (!playerState.currentSong) {
+    return null;
+  }
   
   return (
     <>
       {/* 迷你播放器 - 始终显示在底部 */}
       {!expanded && (
         <MiniPlayer 
-          song={currentSong} 
           onExpand={() => setExpanded(true)} 
         />
       )}
@@ -378,7 +493,6 @@ export default function MusicPlayer() {
       {/* 全屏播放器 - 展开时显示 */}
       {expanded && (
         <FullScreenPlayer 
-          song={currentSong} 
           onCollapse={() => setExpanded(false)} 
         />
       )}
@@ -390,10 +504,11 @@ const styles = StyleSheet.create({
   // 迷你播放器样式
   miniPlayer: {
     position: 'absolute',
-    bottom: 70, // 将bottom设为60，为标签导航栏预留空间，使悬浮条紧贴导航栏顶部
+    bottom: 0, // 固定在屏幕最底部，因为导航栏现在在顶部
     left: 0,
     right: 0,
-    height: 60,
+    height: 80, // 增加高度以避免被圆角屏幕遮挡
+    paddingBottom: 20, // 为圆角屏幕留出底部安全区域
     borderTopWidth: 1,
     borderTopColor: '#333',
     borderBottomWidth: 0,
@@ -406,11 +521,33 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     height: '100%',
   },
+  miniPlayerMainArea: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  miniImageContainer: {
+    position: 'relative',
+    marginRight: 12,
+  },
   miniPlayerImage: {
     width: 40,
     height: 40,
     borderRadius: 4,
-    marginRight: 12,
+  },
+  miniPlayingIndicator: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    backgroundColor: spotifyColors.primary,
+    borderRadius: 6,
+    padding: 2,
+  },
+  miniPlayingDot: {
+    width: 4,
+    height: 4,
+    backgroundColor: spotifyColors.text,
+    borderRadius: 2,
   },
   miniPlayerInfo: {
     flex: 1,
@@ -418,6 +555,13 @@ const styles = StyleSheet.create({
   miniPlayerControls: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  miniPlayButton: {
+    borderRadius: 20,
+    marginLeft: 8,
+  },
+  mainPlayButton: {
+    borderRadius: 35,
   },
   
   // 全屏播放器样式
@@ -485,6 +629,11 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 40,
   },
+  coverImageContainer: {
+    position: 'relative',
+    borderRadius: 12,
+    padding: 2,
+  },
   coverImage: {
     width: screenWidth * 0.85,
     height: screenWidth * 0.85,
@@ -494,6 +643,20 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.4,
     shadowRadius: 12,
     elevation: 10,
+  },
+  playingIndicator: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    backgroundColor: spotifyColors.primary,
+    borderRadius: 8,
+    padding: 4,
+  },
+  playingDot: {
+    width: 8,
+    height: 8,
+    backgroundColor: spotifyColors.text,
+    borderRadius: 4,
   },
   songInfoContainer: {
     flexDirection: 'row',
